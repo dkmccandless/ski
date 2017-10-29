@@ -1,3 +1,4 @@
+// Package ski implements a combinatory logic interpreter.
 package ski
 
 import (
@@ -161,7 +162,7 @@ func parseSKI(s string) (root *Node, err error) {
 	return
 }
 
-// parseJot returns the root Node of the combinatorial expression represented by a Jot string.
+// parseJot returns the root Node of the combinatory expression represented by a Jot string.
 // The only valid characters are 0 and 1.
 func parseJot(s string) (*Node, error) {
 	if s == "" {
@@ -180,8 +181,8 @@ func parseJot(s string) (*Node, error) {
 }
 
 // simplifyNode makes any combinatorial simplifications applicable to a Node's subtree.
-// It returns the simplified subtree's root Node and a boolean value
-// indicating whether any simplifications were made.
+// It returns the simplified subtree's root Node and a boolean value indicating
+// whether any simplifications were made.
 func (n *Node) simplifyNode() (*Node, bool) {
 	if (n.c == 0) == (n.l == nil) || (n.c == 0) == (n.r == nil) {
 		panic(n)
@@ -256,7 +257,7 @@ func (n *Node) String() string {
 	return "(" + n.l.String() + n.r.String() + ")"
 }
 
-// Apply returns the Node representing the application of m to n.
+// Apply returns the application of m to n.
 func Apply(m, n *Node) *Node { return &Node{l: m, r: n} }
 
 // leftApply returns the application of a Comb to a Node.

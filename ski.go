@@ -11,18 +11,21 @@ const (
 	I Comb = 1 + iota // Ia = a
 	K                 // Kab = a
 	S                 // Sabc = ac(bc)
+	B                 // Babc = a(bc)
+	C                 // Cabc = acb
+	W                 // Wab = abb
 )
 
 // String returns a string representation of a Comb.
 func (c Comb) String() string {
 	if c < 0 {
-		// trailing arguments implemented in Reduce
+		// trailing arguments used by Reduce
 		return string(-c + 96)
 	}
-	return []string{"0", "I", "K", "S"}[c]
+	return []string{"0", "I", "K", "S", "B", "C", "W"}[c]
 }
 
-// A Node represents a Comb or the application of one combinatorial expression to another.
+// A Node represents a Comb or the application of one combinatory expression to another.
 // Define new Nodes with NewNode.
 type Node struct {
 	l, r *Node
@@ -32,7 +35,7 @@ type Node struct {
 // NewNode returns a Node representing the specified Comb.
 // It panics if c does not represent a predeclared Comb value.
 func NewNode(c Comb) *Node {
-	if c < I || S < c {
+	if c < I || W < c {
 		panic("NewNode: invalid Comb parameter")
 	}
 	return newNode(c)
@@ -47,8 +50,8 @@ func newNode(c Comb) *Node {
 	return &Node{c: c}
 }
 
-// Parse returns the root Node of the combinatorial expression represented by a string.
-// The string must represent a valid SKI or Jot program.
+// Parse returns the root Node of the expression represented by s,
+// which must be a valid combinatory expression or Jot program.
 func Parse(s string) (root *Node, err error) {
 	switch s[0] {
 	case ' ':
@@ -60,14 +63,14 @@ func Parse(s string) (root *Node, err error) {
 	}
 }
 
-// parseSKI returns the root Node of the combinatorial expression represented by an SKI string.
-// Aside from spaces, which are ignored, the only valid characters are the S, K, and I combinators
-// and parentheses.
+// parseSKI returns the root Node of the combinatory expression represented by a string.
+// Aside from spaces, which are ignored, the only valid characters are parentheses and
+// the S, K, I, B, C, and W combinators.
 func parseSKI(s string) (root *Node, err error) {
 	var op, cp int
 	for i, b := range s {
 		switch b {
-		case 'S', 'K', 'I':
+		case 'S', 'K', 'I', 'B', 'C', 'W':
 		case '(':
 			op++
 		case ')':
@@ -95,6 +98,15 @@ func parseSKI(s string) (root *Node, err error) {
 		case 'I':
 			root = NewNode(I)
 			return
+		case 'B':
+			root = NewNode(B)
+			return
+		case 'C':
+			root = NewNode(C)
+			return
+		case 'W':
+			root = NewNode(W)
+			return
 		case '(':
 			depth := 1
 			offset := 1
@@ -102,7 +114,7 @@ func parseSKI(s string) (root *Node, err error) {
 			var nchildren int
 			for ; depth > 0; offset++ {
 				switch b := s[i+offset]; b {
-				case 'S', 'K', 'I':
+				case 'S', 'K', 'I', 'B', 'C', 'W':
 					if depth == 1 {
 						nchildren++
 						if nchildren == 2 {
@@ -178,12 +190,27 @@ func (n *Node) simplifyNode() (*Node, bool) {
 	case n.l != nil && n.l.c == I:
 		n = n.r
 		return n, true
-	case n.l != nil && n.l.l != nil && n.l.l.c == K:
-		n = n.l.r
-		return n, true
-	case n.l != nil && n.l.l != nil && n.l.l.l != nil && n.l.l.l.c == S:
-		n = Apply(Apply(n.l.l.r, n.r), Apply(n.l.r, n.r))
-		return n, true
+	case n.l != nil && n.l.l != nil && n.l.l.c != 0:
+		switch n.l.l.c {
+		case K:
+			n = n.l.r
+			return n, true
+		case W:
+			n = Apply(Apply(n.l.r, n.r), n.r)
+			return n, true
+		}
+	case n.l != nil && n.l.l != nil && n.l.l.l != nil && n.l.l.l.c != 0:
+		switch n.l.l.l.c {
+		case S:
+			n = Apply(Apply(n.l.l.r, n.r), Apply(n.l.r, n.r))
+			return n, true
+		case B:
+			n = Apply(n.l.l.r, Apply(n.l.r, n.r))
+			return n, true
+		case C:
+			n = Apply(Apply(n.l.l.r, n.r), n.l.r)
+			return n, true
+		}
 	}
 	return n, false
 }

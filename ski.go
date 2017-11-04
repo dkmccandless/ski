@@ -3,6 +3,7 @@ package ski
 
 import (
 	"fmt"
+	"strings"
 )
 
 // A Comb represents a combinator.
@@ -46,7 +47,7 @@ func NewNode(c Comb) *Node {
 // It allows any nonzero value for use by Reduce.
 func newNode(c Comb) *Node {
 	if c == 0 {
-		panic("NewNode: invalid Comb parameter")
+		panic("newNode: invalid Comb parameter")
 	}
 	return &Node{c: c}
 }
@@ -54,15 +55,20 @@ func newNode(c Comb) *Node {
 // Parse returns the root Node of the expression represented by s,
 // which must be a valid combinatory expression or Iota or Jot program.
 func Parse(s string) (root *Node, err error) {
+	if s == "" {
+		return nil, fmt.Errorf("Invalid input")
+	}
 	switch s[0] {
 	case ' ':
 		return Parse(s[1:])
+	case '(', 'S', 'K', 'I', 'B', 'C', 'W', ')':
+		return parseSKI(s)
 	case '*', 'i':
 		return parseIota(s)
 	case '0', '1':
 		return parseJot(s)
 	default:
-		return parseSKI(s)
+		return nil, fmt.Errorf("Invalid character %v", string(s[0]))
 	}
 }
 
@@ -70,6 +76,7 @@ func Parse(s string) (root *Node, err error) {
 // Aside from spaces, which are ignored, the only valid characters are parentheses and
 // the S, K, I, B, C, and W combinators.
 func parseSKI(s string) (root *Node, err error) {
+	s = strings.Replace(s, " ", "", -1)
 	var op, cp int
 	for i, b := range s {
 		switch b {
@@ -157,7 +164,6 @@ func parseSKI(s string) (root *Node, err error) {
 			return
 		case ')':
 			return
-		case ' ':
 		}
 	}
 	panic("unhandled case")

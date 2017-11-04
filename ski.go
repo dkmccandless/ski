@@ -52,11 +52,13 @@ func newNode(c Comb) *Node {
 }
 
 // Parse returns the root Node of the expression represented by s,
-// which must be a valid combinatory expression or Jot program.
+// which must be a valid combinatory expression or Iota or Jot program.
 func Parse(s string) (root *Node, err error) {
 	switch s[0] {
 	case ' ':
 		return Parse(s[1:])
+	case '*', 'i':
+		return parseIota(s)
 	case '0', '1':
 		return parseJot(s)
 	default:
@@ -77,11 +79,11 @@ func parseSKI(s string) (root *Node, err error) {
 		case ')':
 			cp++
 		default:
-			err = fmt.Errorf("parseSKI: Invalid character %v", string(b))
+			err = fmt.Errorf("Invalid SKI character %v", string(b))
 			return
 		}
 		if op == cp && i < len(s)-1 {
-			panic(fmt.Sprintf("Trailing garbage following %v", s[:i+1]))
+			panic(fmt.Sprintf("Unexpected terms following %v", s[:i+1]))
 		}
 	}
 	if op != cp {
@@ -162,22 +164,86 @@ func parseSKI(s string) (root *Node, err error) {
 	return
 }
 
+// parseIota returns the root Node of the combinatory expression represented by an Iota string.
+// The only valid characters are * and i.
+func parseIota(s string) (*Node, error) {
+	if err := checkIota(s); err != nil {
+		return nil, err
+	}
+	if s == "i" {
+		return leftIota(newNode(I)), nil
+	}
+	const ι Comb = 12 // ι = λx.x S K
+	stack := make([]*Node, 0)
+	for i := len(s) - 1; i >= 0; i-- {
+		switch top := len(stack) - 1; s[i] {
+		case '*':
+			switch {
+			case stack[top].c == ι && stack[top-1].c == ι:
+				stack[top-1] = newNode(I)
+			case stack[top].c == ι:
+				stack[top-1] = leftIota(stack[top-1])
+			case stack[top-1].c == ι:
+				stack[top-1] = rightIota(stack[top])
+			default:
+				stack[top-1] = Apply(stack[top], stack[top-1])
+			}
+			stack = stack[:top]
+		case 'i':
+			stack = append(stack, newNode(ι))
+		}
+	}
+	if len(stack) != 1 {
+		panic(stack)
+	}
+	return stack[0], nil
+}
+
+// checkIota checks that s is a valid Iota program and returns an error otherwise.
+// An Iota expression is well-formed if and only if the last character is an i,
+// there are an equal number of *s and is to its left, and for every other character
+// in the expression, the number of *s to its left is at least equal to the number of is.
+func checkIota(s string) error {
+	var stars, is int
+	for i, b := range s {
+		switch b {
+		case '*':
+			stars++
+		case 'i':
+			is++
+			if is == stars+1 && i < len(s)-1 {
+				return fmt.Errorf("Unexpected terms following %v", s[:i+1])
+			}
+		default:
+			return fmt.Errorf("Invalid Iota character %v", string(b))
+		}
+	}
+	switch n := stars + 1 - is; {
+	case n == 1:
+		return fmt.Errorf("Incomplete expression (expected 1 more term)")
+	case n > 1:
+		return fmt.Errorf("Incomplete expression (expected %v more terms)", n)
+	case n < 0:
+		panic("unhandled case")
+	}
+	return nil
+}
+
 // parseJot returns the root Node of the combinatory expression represented by a Jot string.
 // The only valid characters are 0 and 1.
 func parseJot(s string) (*Node, error) {
-	if s == "" {
-		return NewNode(I), nil
+	n := NewNode(I)
+	for _, b := range s {
+		switch b {
+		case '0':
+			n = leftIota(n)
+		case '1':
+			n = rightIota(n)
+		default:
+			return nil, fmt.Errorf("Invalid Jot character %v", string(b))
+		}
 	}
-	switch b := s[len(s)-1]; b {
-	case '0':
-		n, err := parseJot(s[:len(s)-1])
-		return preIota(n), err
-	case '1':
-		n, err := parseJot(s[:len(s)-1])
-		return postIota(n), err
-	default:
-		return nil, fmt.Errorf("parseJot: Invalid character %v", string(b))
-	}
+	return n, nil
 }
 
 // simplifyNode makes any combinatorial simplifications applicable to a Node's subtree.
@@ -188,9 +254,12 @@ func (n *Node) simplifyNode() (*Node, bool) {
 		panic(n)
 	}
 	switch {
-	case n.l != nil && n.l.c == I:
-		n = n.r
-		return n, true
+	case n.l != nil && n.l.c != 0:
+		switch n.l.c {
+		case I:
+			n = n.r
+			return n, true
+		}
 	case n.l != nil && n.l.l != nil && n.l.l.c != 0:
 		switch n.l.l.c {
 		case K:
@@ -266,11 +335,13 @@ func (n *Node) leftApply(c Comb) *Node { return Apply(newNode(c), n) }
 // rightApply returns the application of a Node to a Comb.
 func (n *Node) rightApply(c Comb) *Node { return Apply(n, newNode(c)) }
 
-// preIota returns the application of iota to the input Node. ιF == FSK.
-func preIota(n *Node) *Node { return n.rightApply(S).rightApply(K) }
+// leftIota returns the application of Iota to the input Node.
+// ιF == (λx.x S K) F == FSK.
+func leftIota(n *Node) *Node { return n.rightApply(S).rightApply(K) }
 
-// postIota returns the application of the input Node to iota. Fι == S(KF).
-func postIota(n *Node) *Node { return n.leftApply(K).leftApply(S) }
+// rightIota returns the application of the input Node to Iota.
+// Fι == λxy.F (x y), which is functionally equivalent to S(KF).
+func rightIota(n *Node) *Node { return n.leftApply(K).leftApply(S) }
 
 // Reduce applies a Node to as many trailing arguments as are necessary
 // to fully simplify its expression in terms of the arguments.

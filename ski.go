@@ -54,14 +54,14 @@ func newNode(c Comb) *Node {
 
 // Parse returns the root Node of the expression represented by s,
 // which must be a valid combinatory expression or Iota or Jot program.
-func Parse(s string) (root *Node, err error) {
+func Parse(s string) (*Node, error) {
 	if s == "" {
 		return nil, fmt.Errorf("Invalid input")
 	}
 	switch s[0] {
 	case ' ':
 		return Parse(s[1:])
-	case '(', 'S', 'K', 'I', 'B', 'C', 'W', ')':
+	case '(', 'I', 'K', 'S', 'B', 'C', 'W', ')':
 		return parseSKI(s)
 	case '*', 'i':
 		return parseIota(s)
@@ -74,100 +74,105 @@ func Parse(s string) (root *Node, err error) {
 
 // parseSKI returns the root Node of the combinatory expression represented by a string.
 // Aside from spaces, which are ignored, the only valid characters are parentheses and
-// the S, K, I, B, C, and W combinators.
-func parseSKI(s string) (root *Node, err error) {
+// the I, K, S, B, C, and W combinators.
+func parseSKI(s string) (*Node, error) {
 	s = strings.Replace(s, " ", "", -1)
-	var op, cp int
-	for i, b := range s {
+	if err := checkSKI(s); err != nil {
+		return nil, err
+	}
+	stack := make([]*Node, 0)
+	for _, b := range s {
 		switch b {
-		case 'S', 'K', 'I', 'B', 'C', 'W':
+		case 'I':
+			stack = append(stack, NewNode(I))
+		case 'K':
+			stack = append(stack, NewNode(K))
+		case 'S':
+			stack = append(stack, NewNode(S))
+		case 'B':
+			stack = append(stack, NewNode(B))
+		case 'C':
+			stack = append(stack, NewNode(C))
+		case 'W':
+			stack = append(stack, NewNode(W))
+		case ')':
+			top := len(stack) - 1
+			stack[top-1] = Apply(stack[top-1], stack[top])
+			stack = stack[:top]
+		}
+	}
+	if len(stack) != 1 {
+		panic(stack)
+	}
+	return stack[0], nil
+}
+
+// checkSKI checks that s is a valid SKI expression and returns an error otherwise.
+func checkSKI(s string) error {
+	var op, cp int
+	for _, b := range s {
+		switch b {
+		case 'I', 'K', 'S', 'B', 'C', 'W':
 		case '(':
 			op++
 		case ')':
 			cp++
 		default:
-			err = fmt.Errorf("Invalid SKI character %v", string(b))
-			return
-		}
-		if op == cp && i < len(s)-1 {
-			panic(fmt.Sprintf("Unexpected terms following %v", s[:i+1]))
+			return fmt.Errorf("Invalid SKI character %v", string(b))
 		}
 	}
 	if op != cp {
-		err = fmt.Errorf("Mismatched parentheses in %v (%v vs. %v)", s, op, cp)
-		return
+		return fmt.Errorf("Mismatched parentheses in %v (%v vs. %v)", s, op, cp)
 	}
-	for i := 0; i < len(s); i++ {
-		switch b := s[i]; b {
-		case 'S':
-			root = NewNode(S)
-			return
-		case 'K':
-			root = NewNode(K)
-			return
-		case 'I':
-			root = NewNode(I)
-			return
-		case 'B':
-			root = NewNode(B)
-			return
-		case 'C':
-			root = NewNode(C)
-			return
-		case 'W':
-			root = NewNode(W)
-			return
-		case '(':
-			depth := 1
-			offset := 1
-			var second int
-			var nchildren int
-			for ; depth > 0; offset++ {
-				switch b := s[i+offset]; b {
-				case 'S', 'K', 'I', 'B', 'C', 'W':
-					if depth == 1 {
-						nchildren++
-						if nchildren == 2 {
-							second = offset
-						}
-					}
-				case '(':
-					if depth == 1 {
-						nchildren++
-						if nchildren == 2 {
-							second = offset
-						}
-					}
-					depth++
-				case ')':
-					depth--
-				}
+	if n := countSubterms("(" + s + ")"); n != 1 {
+		return fmt.Errorf("%v terms in %v", n, s)
+	}
+	for i, b := range s {
+		if b != '(' {
+			continue
+		}
+		var j, depth int
+		for j = i; ; j++ {
+			switch s[j] {
+			case '(':
+				depth++
+			case ')':
+				depth--
 			}
-			t := s[i : i+offset]
-			switch {
-			case nchildren == 1:
-				err = fmt.Errorf("1 term in %v", t)
-				return
-			case nchildren > 2:
-				err = fmt.Errorf("%v terms in %v", nchildren, t)
-				return
+			if depth == 0 {
+				break
 			}
-			root = &Node{}
-			root.l, err = parseSKI(t[1:second])
-			if err != nil {
-				return
-			}
-			root.r, err = parseSKI(t[second : offset-1])
-			if err != nil {
-				return
-			}
-			return
-		case ')':
-			return
+		}
+		switch n := countSubterms(s[i : j+1]); {
+		case n == 1:
+			return fmt.Errorf("1 term in %v", s[i:j+1])
+		case n > 2:
+			return fmt.Errorf("%v terms in %v", n, s[i:j+1])
 		}
 	}
-	panic("unhandled case")
-	return
+	return nil
+}
+
+// countSubterms returns the number of first-level subterms in s,
+// which must be a single valid SKI expression with balanced parentheses.
+func countSubterms(s string) int {
+	var n, depth int
+	for _, b := range s {
+		switch b {
+		case 'I', 'K', 'S', 'B', 'C', 'W':
+			if depth == 1 {
+				n++
+			}
+		case '(':
+			if depth == 1 {
+				n++
+			}
+			depth++
+		case ')':
+			depth--
+		}
+	}
+	return n
 }
 
 // parseIota returns the root Node of the combinatory expression represented by an Iota string.

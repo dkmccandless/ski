@@ -146,7 +146,7 @@ func checkSKI(s string) error {
 		switch n := countSubterms(s[i : j+1]); {
 		case n == 1:
 			return fmt.Errorf("1 term in %v", s[i:j+1])
-		case n > 2:
+		case n == 0, n > 2:
 			return fmt.Errorf("%v terms in %v", n, s[i:j+1])
 		}
 	}

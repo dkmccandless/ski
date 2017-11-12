@@ -13,6 +13,7 @@ var (
 )
 
 type skiTest struct {
+	fs       string
 	s        string
 	n        *Node
 	simplify string
@@ -21,29 +22,29 @@ type skiTest struct {
 }
 
 var valid = []skiTest{
-	{"I", NewNode(I), "I", "a", 1},
-	{"K", NewNode(K), "K", "a", 2},
-	{"S", NewNode(S), "S", "((ac)(bc))", 3},
-	{"B", NewNode(B), "B", "(a(bc))", 3},
-	{"C", NewNode(C), "C", "((ac)b)", 3},
-	{"W", NewNode(W), "W", "((ab)b)", 2},
-	{"((SK)K)", Apply(Apply(NewNode(S), NewNode(K)), NewNode(K)), "((SK)K)", "a", 1},
-	{"(B(CW))", Apply(NewNode(B), Apply(NewNode(C), NewNode(W))), "(B(CW))", "((c(ab))(ab))", 3},
-	{"((((IS)K)S)K)", iotaK, "K", "a", 2},
-	{"((((((IS)K)S)K)S)K)", iotaS, "S", "((ac)(bc))", 3},
-	{"(((((S(K(S(K(S(KI))))))S)K)S)K)", jotK, "K", "a", 2},
-	{"(((((((S(K(S(K(S(K(S(K(S(KI))))))))))S)K)S)K)S)K)", jotS, "S", "((ac)(bc))", 3},
+	{"I", "I", NewNode(I), "I", "a", 1},
+	{"K", "K", NewNode(K), "K", "a", 2},
+	{"S", "S", NewNode(S), "S", "ac(bc)", 3},
+	{"B", "B", NewNode(B), "B", "a(bc)", 3},
+	{"C", "C", NewNode(C), "C", "acb", 3},
+	{"W", "W", NewNode(W), "W", "abb", 2},
+	{"((SK)K)", "SKK", Apply(Apply(NewNode(S), NewNode(K)), NewNode(K)), "SKK", "a", 1},
+	{"(B(CW))", "B(CW)", Apply(NewNode(B), Apply(NewNode(C), NewNode(W))), "B(CW)", "c(ab)(ab)", 3},
+	{"((((IS)K)S)K)", "ISKSK", iotaK, "K", "a", 2},
+	{"((((((IS)K)S)K)S)K)", "ISKSKSK", iotaS, "S", "ac(bc)", 3},
+	{"(((((S(K(S(K(S(KI))))))S)K)S)K)", "S(K(S(K(S(KI)))))SKSK", jotK, "K", "a", 2},
+	{"(((((((S(K(S(K(S(K(S(K(S(KI))))))))))S)K)S)K)S)K)", "S(K(S(K(S(K(S(K(S(KI)))))))))SKSKSK", jotS, "S", "ac(bc)", 3},
 }
 
 var validWithSpaces = []skiTest{
-	{" S ", NewNode(S), "S", "((ac)(bc))", 3},
-	{" ( K I ) ", Apply(NewNode(K), NewNode(I)), "(KI)", "b", 2},
+	{" S ", "S", NewNode(S), "S", "ac(bc)", 3},
+	{" ( K I ) ", " K I ", Apply(NewNode(K), NewNode(I)), "KI", "b", 2},
 }
 
 func TestParseValidSKI(t *testing.T) {
 	for _, test := range append(valid, validWithSpaces...) {
-		if got, err := parseSKI(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
-			t.Errorf("parseSKI(%v): got %#v, %v; want %#v, nil", test.s, got, err, test.n)
+		if got, err := parseSKI(test.fs); err != nil || !reflect.DeepEqual(got, test.n) {
+			t.Errorf("parseSKI(%v): got %#v, %v; want %#v, nil", test.fs, got, err, test.n)
 		}
 	}
 }
@@ -122,6 +123,14 @@ func TestParseJot(t *testing.T) {
 		t.Log(got.String(), test.n.String())
 		if got, err := parseJot(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
 			t.Errorf("parseJot(%v): got %#v, %v; want %#v, nil", test.s, got, err, test.n)
+		}
+	}
+}
+
+func TestFullString(t *testing.T) {
+	for _, test := range valid {
+		if got := test.n.FullString(); got != test.fs {
+			t.Errorf("%#v.FullString(): got %v, want %v", test.n, got, test.fs)
 		}
 	}
 }

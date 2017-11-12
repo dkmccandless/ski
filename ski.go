@@ -326,7 +326,20 @@ func Simplify(n *Node) *Node {
 	return n
 }
 
-// String returns a string representation of a Node's subtree.
+// FullString returns a string representation of a Node's subtree
+// with all compound subterms parenthesized.
+func (n *Node) FullString() string {
+	if (n.c == 0) == (n.l == nil) || (n.c == 0) == (n.r == nil) {
+		panic(n)
+	}
+	if n.c != 0 {
+		return n.c.String()
+	}
+	return "(" + n.l.FullString() + n.r.FullString() + ")"
+}
+
+// String returns a string representation of a Node's subtree
+// with right-branching compound subterms parenthesized.
 func (n *Node) String() string {
 	if (n.c == 0) == (n.l == nil) || (n.c == 0) == (n.r == nil) {
 		panic(n)
@@ -334,7 +347,11 @@ func (n *Node) String() string {
 	if n.c != 0 {
 		return n.c.String()
 	}
-	return "(" + n.l.String() + n.r.String() + ")"
+	l, r := n.l.String(), n.r.String()
+	if n.r.c == 0 {
+		return l + "(" + r + ")"
+	}
+	return l + r
 }
 
 // Apply returns the application of m to n.

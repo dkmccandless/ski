@@ -46,12 +46,13 @@ func TestParseValidSKI(t *testing.T) {
 		if got, err := parseSKI(test.fs); err != nil || !reflect.DeepEqual(got, test.n) {
 			t.Errorf("parseSKI(%v): got %#v, %v; want %#v, nil", test.fs, got, err, test.n)
 		}
+		if got, err := parseSKI(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
+			t.Errorf("parseSKI(%v): got %#v, %v; want %#v, nil", test.s, got, err, test.n)
+		}
 	}
 }
 
 var invalidSKI = []string{
-	"II",
-	"CCC",
 	"()",
 	"(S)",
 	"(",

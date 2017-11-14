@@ -54,6 +54,8 @@ func newNode(c Comb) *Node {
 
 // Parse returns the root Node of the expression represented by s,
 // which must be a valid combinatory expression or Iota or Jot program.
+// Application of successive combinatory terms is left-associative,
+// and every parenthesized expression must contain at least two subterms.
 func Parse(s string) (*Node, error) {
 	if s == "" {
 		return nil, fmt.Errorf("Invalid input")
@@ -74,31 +76,39 @@ func Parse(s string) (*Node, error) {
 
 // parseSKI returns the root Node of the combinatory expression represented by a string.
 // Aside from spaces, which are ignored, the only valid characters are parentheses and
-// the I, K, S, B, C, and W combinators.
+// the I, K, S, B, C, and W combinators. Application of successive terms is left-associative.
+// Every parenthesized expression must contain at least two subterms.
 func parseSKI(s string) (*Node, error) {
 	s = strings.Replace(s, " ", "", -1)
 	if err := checkSKI(s); err != nil {
 		return nil, err
 	}
+	combs := map[rune]Comb{
+		'I': I,
+		'K': K,
+		'S': S,
+		'B': B,
+		'C': C,
+		'W': W,
+	}
+	var openparen bool
 	stack := make([]*Node, 0)
 	for _, b := range s {
 		switch b {
-		case 'I':
-			stack = append(stack, NewNode(I))
-		case 'K':
-			stack = append(stack, NewNode(K))
-		case 'S':
-			stack = append(stack, NewNode(S))
-		case 'B':
-			stack = append(stack, NewNode(B))
-		case 'C':
-			stack = append(stack, NewNode(C))
-		case 'W':
-			stack = append(stack, NewNode(W))
+		case '(':
+			openparen = true
+		case 'I', 'K', 'S', 'B', 'C', 'W':
+			stack = append(stack, NewNode(combs[b]))
+			if openparen {
+				openparen = false
+				continue
+			}
+			fallthrough
 		case ')':
-			top := len(stack) - 1
-			stack[top-1] = Apply(stack[top-1], stack[top])
-			stack = stack[:top]
+			if top := len(stack) - 1; top > 0 {
+				stack[top-1] = Apply(stack[top-1], stack[top])
+				stack = stack[:top]
+			}
 		}
 	}
 	if len(stack) != 1 {
@@ -124,15 +134,12 @@ func checkSKI(s string) error {
 	if op != cp {
 		return fmt.Errorf("Mismatched parentheses in %v (%v vs. %v)", s, op, cp)
 	}
-	if n := countSubterms("(" + s + ")"); n != 1 {
-		return fmt.Errorf("%v terms in %v", n, s)
-	}
 	for i, b := range s {
 		if b != '(' {
 			continue
 		}
-		var j, depth int
-		for j = i; ; j++ {
+		j, depth := i+1, 1
+		for ; ; j++ {
 			switch s[j] {
 			case '(':
 				depth++
@@ -143,11 +150,11 @@ func checkSKI(s string) error {
 				break
 			}
 		}
-		switch n := countSubterms(s[i : j+1]); {
-		case n == 1:
+		switch n := countSubterms(s[i : j+1]); n {
+		case 0:
+			return fmt.Errorf("0 terms in %v", s[i:j+1])
+		case 1:
 			return fmt.Errorf("1 term in %v", s[i:j+1])
-		case n == 0, n > 2:
-			return fmt.Errorf("%v terms in %v", n, s[i:j+1])
 		}
 	}
 	return nil
@@ -159,15 +166,15 @@ func countSubterms(s string) int {
 	var n, depth int
 	for _, b := range s {
 		switch b {
-		case 'I', 'K', 'S', 'B', 'C', 'W':
-			if depth == 1 {
-				n++
-			}
 		case '(':
 			if depth == 1 {
 				n++
 			}
 			depth++
+		case 'I', 'K', 'S', 'B', 'C', 'W':
+			if depth == 1 {
+				n++
+			}
 		case ')':
 			depth--
 		}

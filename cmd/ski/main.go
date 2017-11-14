@@ -2,13 +2,20 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 
 	"github.com/dkmccandless/ski"
 )
 
+var (
+	full = flag.Bool("f", false, "fully parenthesized output")
+)
+
 func main() {
+	flag.Parse()
+
 	scanner := bufio.NewScanner(os.Stdin)
 	for fmt.Print("> "); scanner.Scan(); fmt.Print("> ") {
 		rep(scanner.Text())
@@ -27,11 +34,18 @@ func rep(in string) {
 		panic(err)
 	}
 	s := ski.Simplify(n)
-	ss := s.String()
+	ss := text(s)
 	r, nargs := ski.Reduce(s)
-	var args string
 	for i := 1; i <= nargs; i++ {
-		args += string(96 + i)
+		ss += string(96 + i)
 	}
-	fmt.Printf("  %v = %v\n", ss+args, r.String())
+	fmt.Printf("  %v = %v\n", ss, text(r))
+}
+
+func text(n *ski.Node) string {
+	if *full {
+		return n.FullString()
+	} else {
+		return n.String()
+	}
 }

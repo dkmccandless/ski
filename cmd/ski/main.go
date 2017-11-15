@@ -16,9 +16,15 @@ var (
 func main() {
 	flag.Parse()
 
-	scanner := bufio.NewScanner(os.Stdin)
-	for fmt.Print("> "); scanner.Scan(); fmt.Print("> ") {
-		rep(scanner.Text())
+	if len(flag.Args()) > 0 {
+		for _, a := range flag.Args() {
+			rep(a)
+		}
+	} else {
+		scanner := bufio.NewScanner(os.Stdin)
+		for fmt.Print("> "); scanner.Scan(); fmt.Print("> ") {
+			rep(scanner.Text())
+		}
 	}
 }
 

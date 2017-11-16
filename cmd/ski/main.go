@@ -10,12 +10,14 @@ import (
 )
 
 var (
-	full = flag.Bool("f", false, "fully parenthesized output")
+	full    = flag.Bool("f", false, "fully parenthesized output")
+	verbose = flag.Bool("v", false, "verbose simplification")
 )
 
 func main() {
 	flag.Parse()
 
+	ski.Verbose = *verbose
 	if len(flag.Args()) > 0 {
 		for _, a := range flag.Args() {
 			rep(a)
@@ -45,7 +47,7 @@ func rep(in string) {
 	for i := 1; i <= nargs; i++ {
 		ss += string(96 + i)
 	}
-	fmt.Printf("  %v = %v\n", ss, text(r))
+	fmt.Printf("%v = %v\n", ss, text(r))
 }
 
 func text(n *ski.Node) string {

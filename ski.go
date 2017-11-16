@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// Verbose causes successive simplification steps in Simplify() to be printed to stderr.
+var Verbose bool
+
 // A Comb represents a combinator.
 type Comb int
 
@@ -326,9 +329,12 @@ func (n *Node) simplifyTree() (*Node, bool) {
 }
 
 // Simplify simplifies a Node's subtree and returns the simplified subtree's root Node.
+// If Verbose is true, it prints the steps of the Node's simplification to stderr.
 func Simplify(n *Node) *Node {
 	for ok := true; ok; {
-		fmt.Fprintf(os.Stderr, "%v\n", n.String())
+		if Verbose {
+			fmt.Fprintf(os.Stderr, "%v\n", n.String())
+		}
 		n, ok = n.simplifyTree()
 	}
 	return n

@@ -3,6 +3,7 @@ package ski
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -327,7 +328,7 @@ func (n *Node) simplifyTree() (*Node, bool) {
 // Simplify simplifies a Node's subtree and returns the simplified subtree's root Node.
 func Simplify(n *Node) *Node {
 	for ok := true; ok; {
-		fmt.Printf("  %v\n", n.String())
+		fmt.Fprintf(os.Stderr, "%v\n", n.String())
 		n, ok = n.simplifyTree()
 	}
 	return n

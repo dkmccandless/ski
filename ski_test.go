@@ -1,6 +1,7 @@
 package ski
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -37,7 +38,7 @@ var valid = []skiTest{
 }
 
 var validWithSpaces = []skiTest{
-	{" S ", "S", NewNode(S), "S", "ac(bc)", 3},
+	{" S ", " S ", NewNode(S), "S", "ac(bc)", 3},
 	{" ( K I ) ", " K I ", Apply(NewNode(K), NewNode(I)), "KI", "b", 2},
 }
 
@@ -153,10 +154,36 @@ func TestSimplify(t *testing.T) {
 	}
 }
 
+func ExampleSimplify() {
+	for _, n := range []*Node{
+		Apply(NewNode(I), NewNode(C)),
+		Apply(Apply(Apply(NewNode(S), NewNode(K)), NewNode(S)), NewNode(K)),
+		Apply(Apply(NewNode(W), Apply(NewNode(B), NewNode(S))), NewNode(C)),
+	} {
+		s := Simplify(n)
+		fmt.Println(n, s)
+	}
+	// Output:
+	// IC C
+	// SKSK K
+	// W(BS)C S(CC)
+}
+
 func TestReduce(t *testing.T) {
 	for _, test := range valid {
 		if got, n := Reduce(test.n); got.String() != test.reduce || n != test.reduceN {
 			t.Errorf("Reduce(%#v): got %v, %v; want %v, %v", test.n, got.String(), n, test.reduce, test.reduceN)
 		}
 	}
+}
+
+func ExampleReduce() {
+	for _, c := range []Comb{I, K, S} {
+		r, n := Reduce(NewNode(c))
+		fmt.Println(c, r, n)
+	}
+	// Output:
+	// I a 1
+	// K a 2
+	// S ac(bc) 3
 }

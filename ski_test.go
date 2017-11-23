@@ -40,20 +40,23 @@ var valid = []skiTest{
 var validWithSpaces = []skiTest{
 	{" S ", " S ", NewNode(S), "S", "ac(bc)", 3},
 	{" ( K I ) ", " K I ", Apply(NewNode(K), NewNode(I)), "KI", "b", 2},
+	{"	(	C	C	)	", "	C	C	", Apply(NewNode(C), NewNode(C)), "CC", "bca", 3},
 }
 
 func TestParseValidSKI(t *testing.T) {
 	for _, test := range append(valid, validWithSpaces...) {
-		if got, err := parseSKI(test.fs); err != nil || !reflect.DeepEqual(got, test.n) {
+		if got, err := Parse(test.fs); err != nil || !reflect.DeepEqual(got, test.n) {
 			t.Errorf("parseSKI(%v): got %#v, %v; want %#v, nil", test.fs, got, err, test.n)
 		}
-		if got, err := parseSKI(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
+		if got, err := Parse(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
 			t.Errorf("parseSKI(%v): got %#v, %v; want %#v, nil", test.s, got, err, test.n)
 		}
 	}
 }
 
 var invalidSKI = []string{
+	"",
+	" ",
 	"()",
 	"(S)",
 	"(",
@@ -61,11 +64,12 @@ var invalidSKI = []string{
 	"((SK)K",
 	"(C(BI)))",
 	"Z",
+	"s",
 }
 
 func TestParseInvalidSKI(t *testing.T) {
 	for _, test := range invalidSKI {
-		if got, err := parseSKI(test); err == nil {
+		if got, err := Parse(test); err == nil {
 			t.Errorf("parseSKI(%v): got %#v, nil; want nil, error", test, got)
 		}
 	}
@@ -79,6 +83,7 @@ var validIota = []struct {
 	{"*ii", newNode(I)},
 	{"*i*i*ii", iotaK},
 	{"*i*i*i*ii", iotaS},
+	{" *    i  i   ", newNode(I)},
 }
 
 var invalidIota = []string{
@@ -95,9 +100,7 @@ var invalidIota = []string{
 
 func TestParseValidIota(t *testing.T) {
 	for _, test := range validIota {
-		got, _ := parseIota(test.s)
-		t.Log(got.String(), test.n.String())
-		if got, err := parseIota(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
+		if got, err := Parse(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
 			t.Errorf("parseIota(%v): got %#v, %v; want %#v, nil", test.s, got, err, test.n)
 		}
 	}
@@ -105,7 +108,7 @@ func TestParseValidIota(t *testing.T) {
 
 func TestParseInvalidIota(t *testing.T) {
 	for _, test := range invalidIota {
-		if got, err := parseIota(test); err == nil {
+		if got, err := Parse(test); err == nil {
 			t.Errorf("parseIota(%v): got %#v, nil; want nil, error", test, got)
 		}
 	}
@@ -117,13 +120,12 @@ var validJot = []struct {
 }{
 	{"11100", jotK},
 	{"11111000", jotS},
+	{"	1  1 1110	0		0  ", jotS},
 }
 
 func TestParseJot(t *testing.T) {
 	for _, test := range validJot {
-		got, _ := parseJot(test.s)
-		t.Log(got.String(), test.n.String())
-		if got, err := parseJot(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
+		if got, err := Parse(test.s); err != nil || !reflect.DeepEqual(got, test.n) {
 			t.Errorf("parseJot(%v): got %#v, %v; want %#v, nil", test.s, got, err, test.n)
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 )
 
 // Verbose causes successive simplification steps in Simplify() to be printed to stderr.
@@ -58,15 +59,14 @@ func newNode(c Comb) *Node {
 
 // Parse returns the root Node of the expression represented by s,
 // which must be a valid combinatory expression or Iota or Jot program.
-// Application of successive combinatory terms is left-associative,
+// Whitespace is ignored. Application of successive combinatory terms is left-associative,
 // and every parenthesized expression must contain at least two subterms.
 func Parse(s string) (*Node, error) {
+	s = strings.Join(strings.FieldsFunc(s, unicode.IsSpace), "")
 	if s == "" {
 		return nil, fmt.Errorf("Invalid input")
 	}
 	switch s[0] {
-	case ' ':
-		return Parse(s[1:])
 	case '(', 'I', 'K', 'S', 'B', 'C', 'W', ')':
 		return parseSKI(s)
 	case '*', 'i':
@@ -79,11 +79,10 @@ func Parse(s string) (*Node, error) {
 }
 
 // parseSKI returns the root Node of the combinatory expression represented by a string.
-// Aside from spaces, which are ignored, the only valid characters are parentheses and
-// the I, K, S, B, C, and W combinators. Application of successive terms is left-associative.
+// The only valid characters are parentheses and the I, K, S, B, C, and W combinators.
+// Application of successive terms is left-associative.
 // Every parenthesized expression must contain at least two subterms.
 func parseSKI(s string) (*Node, error) {
-	s = strings.Replace(s, " ", "", -1)
 	if err := checkSKI(s); err != nil {
 		return nil, err
 	}

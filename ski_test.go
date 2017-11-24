@@ -131,6 +131,26 @@ func TestParseJot(t *testing.T) {
 	}
 }
 
+func ExampleParse() {
+	for _, s := range []string{
+		"((BC)(SC))",
+		"WBWB",
+		"***i*i*i*ii*iii",
+		"110110010",
+	} {
+		n, err := Parse(s)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(s, n.String())
+	}
+	// Output:
+	// ((BC)(SC)) BC(SC)
+	// WBWB WBWB
+	// ***i*i*i*ii*iii S(K(ISKSKSKI))
+	// 110110010 S(K(S(K(S(K(S(K(S(KI)))SK))))SKSK))SK
+}
+
 func TestFullString(t *testing.T) {
 	for _, test := range valid {
 		if got := test.n.FullString(); got != test.fs {

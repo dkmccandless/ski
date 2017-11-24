@@ -1,4 +1,17 @@
-// Package ski implements a combinatory logic interpreter.
+/*
+Package ski implements a combinatory logic interpreter.
+
+The I, K, S, B, C, and W combinators are supported:
+
+	Ia = a
+	Kab = a
+	Sabc = ac(bc)
+	Babc = a(bc)
+	Cabc = acb
+	Wab = abb
+
+Parse also accepts valid expressions in the Iota and Jot programming languages.
+*/
 package ski
 
 import (
@@ -8,7 +21,7 @@ import (
 	"unicode"
 )
 
-// Verbose causes successive simplification steps in Simplify() to be printed to stderr.
+// Verbose causes successive simplification steps in Simplify to be printed to standard error.
 var Verbose bool
 
 // A Comb represents a combinator.
@@ -58,9 +71,15 @@ func newNode(c Comb) *Node {
 }
 
 // Parse returns the root Node of the expression represented by s,
-// which must be a valid combinatory expression or Iota or Jot program.
-// Whitespace is ignored. Application of successive combinatory terms is left-associative,
-// and every parenthesized expression must contain at least two subterms.
+// which must be a valid combinatory expression composed of parentheses
+// and the I, K, S, B, C, and W combinators. Whitespace is ignored.
+// Every parenthesized expression must contain at least two subterms.
+//
+// By convention, application of successive terms is left-associative,
+// and left-branching parentheses may be elided: ABCD and (ABCD) denote (((AB)C)D).
+//
+// In addition, Parse accepts strings representing valid Iota programs
+// composed of the characters * and i, as well as Jot programs.
 func Parse(s string) (*Node, error) {
 	s = strings.Join(strings.FieldsFunc(s, unicode.IsSpace), "")
 	if s == "" {
@@ -328,7 +347,7 @@ func (n *Node) simplifyTree() (*Node, bool) {
 }
 
 // Simplify simplifies a Node's subtree and returns the simplified subtree's root Node.
-// If Verbose is true, it prints the steps of the Node's simplification to stderr.
+// If Verbose is true, Simplify prints the steps of the Node's simplification to standard error.
 func Simplify(n *Node) *Node {
 	for ok := true; ok; {
 		if Verbose {
@@ -352,7 +371,7 @@ func (n *Node) FullString() string {
 }
 
 // String returns a string representation of a Node's subtree
-// with right-branching compound subterms parenthesized.
+// with only right-branching compound subterms parenthesized.
 func (n *Node) String() string {
 	if (n.c == 0) == (n.l == nil) || (n.c == 0) == (n.r == nil) {
 		panic(n)
@@ -387,6 +406,8 @@ func rightIota(n *Node) *Node { return n.leftApply(K).leftApply(S) }
 // Reduce applies a Node to as many trailing arguments as are necessary
 // to fully simplify its expression in terms of the arguments.
 // It returns the simplified expression's root Node and the number of arguments consumed.
+// Trailing arguments created by Reduce are represented by String and FullString
+// as successive lower-case letters.
 func Reduce(n *Node) (*Node, int) {
 	c := Comb(-1)
 	// Add trailing arguments until the expression simplifies into one whose leftmost term is one of the arguments
